@@ -96,92 +96,74 @@ class  RECO:
         test_logloss = log_loss(label_test,gbm.predict_proba(data_test))
         print('train logloss : %2.2f  , test logloss  , %2.2f  ' %( train_logloss, test_logloss ))
         
+        
     def gbdt_lr(self,data,label,epoch=10):
         '''
         https://research.fb.com/wp-content/uploads/2016/11/practical-lessons-from-predicting-clicks-on-ads-at-facebook.pdf  gbdt + lr 在广告点击率预估场景的使用 
-        https://zhuanlan.zhihu.com/p/113350563 reference  ''' 
+        https://zhuanlan.zhihu.com/p/113350563 reference  
+        input : data (dataframe) columns = ['user_id','title,'age','gender']
+        gbdt feats: gbdt_leaf_0 ~ gbdt_leaf_n 
+        onehot feats =  gbdt_leaf_0 : [1,0,0,...,0] 
+        new input  =  input + onehot feats 
+
+        ''' 
+        data_train,data_val,label_train,label_val = train_test_split(data,label,test_size = 0.33,random_state= 10)
+        gbm = lgb.LGBMClassifier(boosting_type='gbdt', objective='binary',subsample=0.8,
+                                min_child_weight=0.5,colsample_bytree=0.7,num_leaves=100,
+                                max_depth=3,learning_rate=0.01,n_estimators=50
+                               )    
+        gbm.fit(data_train, label_train,
+               eval_set=[(data_train, label_train), (data_val, label_val)],
+               eval_names=['train', 'test'],
+               eval_metric='binary_logloss'
+              )       
+        model = gbm.booster_
+        gbdt_feats_train = model.predict(data_train, pred_leaf = True)
+        gbdt_feats_test = model.predict(data_val, pred_leaf = True)
+        
+        gbdt_feats_name = ['gbdt_leaf_' + str(i) for i in range(gbdt_feats_train.shape[1])]
+        df_train_gbdt_feats = pd.DataFrame(gbdt_feats_train, columns = gbdt_feats_name) 
+        df_test_gbdt_feats = pd.DataFrame(gbdt_feats_test, columns = gbdt_feats_name)
+        # narray transto dataframe
+        data_train = pd.DataFrame(data_train)
+        data_val = pd.DataFrame(data_val)
+        train = pd.concat([data_train, df_train_gbdt_feats], axis = 1)
+        val = pd.concat([data_val, df_test_gbdt_feats], axis = 1)
+        train_len = train.shape[0]
+        data = pd.concat([train,val])
+        
+        for col in gbdt_feats_name:
+            onehot_feats = pd.get_dummies(data[col], prefix = col)
+            del data[col]
+            data = pd.concat([data, onehot_feats], axis = 1)
+       
+        x_train, x_val, y_train, y_val = train_test_split(data, label, test_size = 0.2, random_state = 10)
          
+        lr = LogisticRegression() 
+        lr.fit(x_train, y_train)
+        tr_logloss = log_loss(y_train, lr.predict_proba(x_train)[:, 1])
+        val_logloss = log_loss(y_val, lr.predict_proba(x_val)[:, 1])
+
+        # NE = (-1) / len(y_pred_test) * sum(((1+y_test)/2 * np.log(y_pred_test[:,1]) +  (1-y_test)/2 * np.log(1 - y_pred_test[:,1])))
+        y_pred_train = lr.predict_proba(x_train)[:,1]
+        y_pred_val = lr.predict_proba(x_val)[:,1]
+        val_ne = (-1) / len(y_pred_val) * sum(((1+y_val)/2 * np.log(y_pred_val) +  (1-y_val)/2 * np.log(1 - y_pred_val)))
+        tr_ne = (-1) / len(y_pred_train) * sum(((1+y_train)/2 * np.log(y_pred_train) +  (1-y_train)/2 * np.log(1 - y_pred_train)))
+        print('tr-logloss: %2.2f , val logloss:%2.2f  ' %(tr_logloss, val_logloss))
+        print('tr-ne: %2.2f , val ne:%2.2f  ' %(tr_ne, val_ne))
+
+
                 
-        
-    def rf_lr(self,data,label,epoch==10): 
+
+    def rf_lr(self,data,label,epoch=10): 
         ''' rf ,gbdt benchmark https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2264-5 ''' 
-        
+        pass     
 
 if __name__ == "__main__":
     job = RECO()
     data = job.generate_samples()
     data,label = job.generate_data(data)
-    #job.lr_model(data,label)
-    job.gbdt(data,label)
+   # job.lr_model(data,label)
+    job.gbdt_lr(data,label)
+   # job.rf_lr(data,label)
 
-'''
-
-## 建模
-# 下面训练三个模型对数据进行预测， 分别是LR模型， GBDT模型和两者的组合模型， 然后分别观察它们的预测效果， 对于不同的模型， 特征会有不同的处理方式如下：
-# 1. 逻辑回归模型： 连续特征要归一化处理， 离散特征需要one-hot处理
-# 2. GBDT模型： 树模型连续特征不需要归一化处理， 但是离散特征需要one-hot处理
-# 3. LR+GBDT模型： 由于LR使用的特征是GBDT的输出， 原数据依然是GBDT进行处理交叉， 所以只需要离散特征one-hot处理
-    # 把训练集和测试集分开
-    # 模型预测
-    y_pred = lr.predict_proba(test)[:, 1]  # predict_proba 返回n行k列的矩阵，第i行第j列上的数值是模型预测第i个预测样本为某个标签的概率, 这里的1表示点击的概率
-    print('predict: ', y_pred[:10]) # 这里看前10个， 预测为点击的概率
-
-
-
-
-### LR + GBDT建模
-          
-    
-    model = gbm.booster_
-
-    gbdt_feats_train = model.predict(train, pred_leaf = True)
-    gbdt_feats_test = model.predict(test, pred_leaf = True)
-    gbdt_feats_name = ['gbdt_leaf_' + str(i) for i in range(gbdt_feats_train.shape[1])]
-    df_train_gbdt_feats = pd.DataFrame(gbdt_feats_train, columns = gbdt_feats_name) 
-    df_test_gbdt_feats = pd.DataFrame(gbdt_feats_test, columns = gbdt_feats_name)
-
-    train = pd.concat([train, df_train_gbdt_feats], axis = 1)
-    test = pd.concat([test, df_test_gbdt_feats], axis = 1)
-    train_len = train.shape[0]
-    data = pd.concat([train, test])
-    del train
-    del test
-    gc.collect()
-
-    # # 连续特征归一化
-    scaler = MinMaxScaler()
-    for col in continuous_feature:
-        data[col] = scaler.fit_transform(data[col].values.reshape(-1, 1))
-
-    for col in gbdt_feats_name:
-        onehot_feats = pd.get_dummies(data[col], prefix = col)
-        data.drop([col], axis = 1, inplace = True)
-        data = pd.concat([data, onehot_feats], axis = 1)
-
-    train = data[: train_len]
-    test = data[train_len:]
-    del data
-    gc.collect()
-
-    x_train, x_val, y_train, y_val = train_test_split(train, target, test_size = 0.3, random_state = 2018)
-
-    
-    lr = LogisticRegression()
-    lr.fit(x_train, y_train)
-    tr_logloss = log_loss(y_train, lr.predict_proba(x_train)[:, 1])
-    print('tr-logloss: ', tr_logloss)
-    val_logloss = log_loss(y_val, lr.predict_proba(x_val)[:, 1])
-    print('val-logloss: ', val_logloss)
-    y_pred = lr.predict_proba(test)[:, 1]
-    print(y_pred[:10])
-
-
-# 训练和预测lr模型
-lr_model(data.copy(), category_fea, continuous_fea)
-
-# 模型训练和预测GBDT模型
-gbdt_model(data.copy(), category_fea, continuous_fea)
-
-# 训练和预测GBDT+LR模型
-gbdt_lr_model(data.copy(), category_fea, continuous_fea)
-'''
