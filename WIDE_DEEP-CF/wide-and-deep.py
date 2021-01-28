@@ -17,6 +17,9 @@ CATEGORY_COLUMNS = ['workclass', 'education', 'marital_status', 'occupation', 'r
 CONTINUOUS_COLUMNS = ['age','education_num', 'capital_gain', 'capital_loss', 'hours_per_week']
 
 def preprocessing():
+    '''
+        generate traindata ,testdata, train_category,test_category,train_contineous ,test_contineous  
+    '''
     train = pd.read_csv('./data/adult.data',names = COLUMNS)
     train.dropna(how='any',axis = 0 )
     test = pd.read_csv('./data/adult.test',skiprows = 1 ,names =COLUMNS)
@@ -54,6 +57,9 @@ def preprocessing():
     
 class WIDE_AND_DEEP(object):
     def __init__(self,mode = 'wide_and_deep'):
+        ''' generate interaction features
+            initialize data
+         '''
         self.mode = mode 
         train_data_category,train_data_conti,test_data_category,test_data_conti,train_label,test_label,all_data = preprocessing()
         self.train_data_category = train_data_category
@@ -118,8 +124,8 @@ class WIDE_AND_DEEP(object):
     def train(self,epochs=10,optimizer = 'adam',batch_size = 128):
         ''' training mode  deep,wide,deep and wide 
         train_data_category,train_data_conti,test_data_category,test_data_conti,train_label,test_label,all_data = preprocessing()
-        input: 
-        output: 
+        input: conti + category + poly 
+        output: loss,auc ,model
         '''
         if self.mode == 'deep':
             input_data = [self.train_data_conti] +\
@@ -147,6 +153,7 @@ class WIDE_AND_DEEP(object):
         self.model.compile(optimizer = optimizer,loss = 'binary_crossentropy',metrics = ['accuracy']
         self.model.fit(input_data,self.train_label,epochs = epochs ,batch_size = batch_size) 
         
+        #self.save_model()
     def evaluate(self):
         if self.mode =='deep':
             input_data = [self.test_data_conti] +\
