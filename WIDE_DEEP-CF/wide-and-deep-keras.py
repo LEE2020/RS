@@ -69,9 +69,9 @@ class WIDE_AND_DEEP(object):
         self.train_label = train_label
         self.test_label = test_label 
         self.all_data = all_data 
-        # interaction interaction_only (a,b)=>(1,a,b,ab)  false (a,b) =>(1,a,b,a^2,b^2,ab)  
+        # hand --- interaction ..... interaction_only (a,b)=>(1,a,b,ab)  false (a,b) =>(1,a,b,a^2,b^2,ab)  
         self.poly = PolynomialFeatures(degree = 2, interaction_only = True)
-        self.train_poly_category = self.poly.fit_transform(self.train_data_category)
+        self.train_poly_category = self.poly.fit_transform(self.train_data_category) # base on origin feats , interaction for wide component 
         self.test_poly_category = self.poly.transform(self.test_data_category)
         self.model = None 
         self.logistic_input = None 
@@ -84,6 +84,7 @@ class WIDE_AND_DEEP(object):
         ''' wide input layer'''
         samples_size, dim  = self.train_poly_category.shape
         self.logistic_input = keras.layers.Input(shape=(dim,)) 
+
     def deep(self):
         '''deep input layer  [conti_input] + category_input 
            deep output layer  ac3 
