@@ -216,4 +216,4 @@ class DEEP_AND_FM():
                 eval_prob_list.append(prob[i,0])
             valid_ks = cal_ks(valid_ks,np.narray(eval_prob_list))
             wf.write(" block: %d , train dataset :  loss=%f ,  ks=%f  " % (j,  train_loss, train_ks)) 
-                                     
+    wf.close() # python中会自动关闭 with...格式 
