@@ -1,18 +1,16 @@
 import tensorflow as tf 
 from keras.datasets import imdb
-# load data
-(train_data,train_labels),(test_data,test_labels) = imdb.load_data(num_words=10000)
-# network 
-
+import matplotlib.pyplot as plt
 from keras import models
 from keras import layers
 
+# load data
+(train_data,train_labels),(test_data,test_labels) = imdb.load_data(num_words=10000)
+# network
 model = models.Sequential()
 model.add(layers.Dense(16,activation='relu',input_shape=(10000,)))
 model.add(layers.Dense(16,activation='relu'))
-model.add(layers.Dense(1,activation='sigmoid')) 
-
-
+model.add(layers.Dense(1,activation='sigmoid'))
 # optimizor & loss 
 model.compile(optimizer = 'rmsprop', \
               loss = 'binary_crossentropy',\
@@ -26,7 +24,7 @@ model_rst = model.fit(train_data,train_labels,epochs=20,\
 # parameters 
 model_rst.history.keys()  # 里面包含监控的指标和loss（train & val) 
 # plot loss 
-import matplotlib.pyplot as plt 
+
 history_dict = model_rst.history
 loss_val = history_dict['loss']
 val_loss_val = history_dict['val_loss']
